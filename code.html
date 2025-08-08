@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Code Visualizer with Gemini AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --accent-color: #4299e1;
+            --border-color: #4a5568;
+        }
+        .theme-light {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f7fafc;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --accent-color: #3182ce;
+            --border-color: #e2e8f0;
+        }
+        .theme-oceanic {
+            --bg-primary: #0b192f;
+            --bg-secondary: #172a45;
+            --text-primary: #ccd6f6;
+            --text-secondary: #8892b0;
+            --accent-color: #64ffda;
+            --border-color: #233554;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .panel {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+        }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .highlight { background-color: rgba(var(--accent-rgb), 0.2); }
+        .executed { color: var(--text-secondary); opacity: 0.7; }
+        .gutter-element { color: var(--text-secondary); }
+        .breakpoint { color: #ef4444; }
+        .execution-arrow { color: var(--accent-color); }
+        .modal-backdrop { background-color: rgba(0, 0, 0, 0.7); }
+        .modal-content { background-color: var(--bg-secondary); }
+        .btn-primary { background-color: var(--accent-color); color: var(--bg-primary); }
+        .btn-secondary { background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-ai { background-color: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); }
+        .btn-ai:hover { background-color: var(--border-color); color: var(--text-primary); }
+        .spinner { border-left-color: var(--accent-color); }
+        select { background-color: var(--bg-primary); color: var(--text-primary); border-color: var(--border-color); }
+        .variable-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid var(--border-color);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="theme-twilight">
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-4xl font-bold">Code Visualizer</h1>
+                <p class="text-lg text-secondary">Analyze your code with AI-powered insights.</p>
+            </div>
+            <div>
+                <label for="theme-switcher" class="text-sm">Theme:</label>
+                <select id="theme-switcher" class="p-2 rounded-md">
+                    <option value="theme-twilight">Twilight</option>
+                    <option value="theme-light">Daybreak</option>
+                    <option value="theme-oceanic">Oceanic</option>
+                </select>
+            </div>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div id="code-input-area" class="panel p-6 rounded-lg shadow-lg">
+                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-600">1. Your Code</h2>
+                <div class="mb-4">
+                    <label for="language" class="block text-sm font-medium mb-1">Programming Language</label>
+                    <select id="language" class="w-full p-2 rounded-md shadow-sm">
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="c" selected>C</option>
+                        <option value="cpp">C++</option>
+                        <option value="java">Java</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="codeInput" class="block text-sm font-medium mb-1">Paste your code here:</label>
+                    <textarea id="codeInput" rows="15" class="code-font w-full p-3 rounded-md shadow-sm bg-gray-800 text-gray-200 border border-gray-600"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button id="explainBtn" class="btn-ai w-full font-bold py-2 px-4 rounded-md transition-colors">✨ Explain</button>
+                    <button id="optimizeBtn" class="btn-ai w-full font-bold py-2 px-4 rounded-md transition-colors">✨ Optimize</button>
+                    <button id="findBugsBtn" class="btn-ai w-full font-bold py-2 px-4 rounded-md transition-colors">✨ Find Bugs</button>
+                    <button id="convertBtn" class="btn-ai w-full font-bold py-2 px-4 rounded-md transition-colors">✨ Convert</button>
+                </div>
+
+                <button id="visualizeBtn" class="btn-primary w-full font-bold py-3 px-4 rounded-md transition-transform transform hover:scale-105">
+                    Visualize Execution
+                </button>
+            </div>
+
+            <div id="visualization-area" class="panel p-6 rounded-lg shadow-lg hidden">
+                 <h2 class="text-2xl font-semibold mb-4 border-b pb-2 border-gray-600">2. Execution Flow</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <div class="bg-gray-900 p-4 rounded-md mb-4 overflow-x-auto h-[400px]">
+                            <pre><code id="codeDisplay" class="code-font text-sm"></code></pre>
+                        </div>
+                        
+                        <div class="mb-4 px-2">
+                            <label for="executionSlider" class="text-sm font-medium">Timeline</label>
+                            <input type="range" id="executionSlider" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" value="0" min="0" max="0" disabled>
+                        </div>
+
+                        <div class="flex items-center justify-center gap-2 md:gap-4 mb-4">
+                             <button id="stopBtn" title="Stop (Esc)" class="btn-secondary p-2 rounded-md" disabled><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M5 3.5h6A1.5 1.5 0 0 1 12.5 5v6a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 11V5A1.5 1.5 0 0 1 5 3.5z"/></svg></button>
+                            <button id="resetBtn" title="Reset" class="btn-secondary p-2 rounded-md" disabled><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg></button>
+                            <button id="prevBtn" title="Previous Step" class="btn-secondary p-2 rounded-md" disabled><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M8.354 1.646a.5.5 0 0 1 0 .708L2.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/><path d="M12.354 1.646a.5.5 0 0 1 0 .708L6.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg></button>
+                            <button id="runBtn" title="Run/Pause" class="btn-primary p-2 rounded-md" disabled><svg id="runIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg><svg id="pauseIcon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" class="hidden"><path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/></svg></button>
+                            <button id="nextBtn" title="Next Step" class="btn-secondary p-2 rounded-md" disabled><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M3.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L9.293 8 3.646 2.354a.5.5 0 0 1 0-.708z"/><path d="M7.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L13.293 8 7.646 2.354a.5.5 0 0 1 0-.708z"/></svg></button>
+                            <span id="stepCounter" class="text-sm font-medium w-24 text-center">Step 0 / 0</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-4">
+                        <div>
+                            <h3 class="font-semibold text-lg mb-2">Variables</h3>
+                            <div id="variablesDisplay" class="panel p-4 rounded-md min-h-[100px] text-sm code-font">
+                                <p>No variables yet.</p>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg mb-2">Program Output</h3>
+                            <div id="outputDisplay" class="bg-black text-white p-4 rounded-md min-h-[200px] text-sm code-font">
+                                <p>No output yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="inputModal" class="modal-backdrop hidden">
+        <div class="modal-content p-8 rounded-lg shadow-2xl w-11/12 md:w-1/3">
+            <h3 id="inputPrompt" class="text-xl font-semibold mb-4">Input Required</h3>
+            <input type="text" id="userInput" class="w-full p-2 border rounded-md mb-4 bg-gray-800 text-gray-200 border-gray-600">
+            <button id="submitInputBtn" class="btn-primary w-full font-bold py-2 px-4 rounded-md">Submit</button>
+        </div>
+    </div>
+    <div id="aiModal" class="modal-backdrop hidden">
+        <div class="modal-content p-8 rounded-lg shadow-2xl w-11/12 md:w-2/3 max-w-4xl max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="aiModalTitle" class="text-2xl font-semibold">AI Analysis</h3>
+                <button id="closeAiModalBtn" class="text-3xl">&times;</button>
+            </div>
+            <div id="aiModalContent" class="prose max-w-none overflow-y-auto">
+                <div class="flex justify-center items-center h-48"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+    <div id="convertModal" class="modal-backdrop hidden">
+        <div class="modal-content p-8 rounded-lg shadow-2xl w-11/12 md:w-1/3">
+            <h3 class="text-xl font-semibold mb-4">Convert Code</h3>
+            <div class="mb-4">
+                <label for="targetLanguage" class="block text-sm font-medium mb-1">Convert to:</label>
+                <select id="targetLanguage" class="w-full p-2 rounded-md shadow-sm"></select>
+            </div>
+            <div class="flex gap-2">
+                <button id="submitConvertBtn" class="btn-primary w-full font-bold py-2 px-4 rounded-md">Convert</button>
+                <button id="cancelConvertBtn" class="btn-secondary w-full font-bold py-2 px-4 rounded-md">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // --- DOM Elements ---
+        const themeSwitcher = document.getElementById('theme-switcher');
+        const languageSelect = document.getElementById('language');
+        const visualizeBtn = document.getElementById('visualizeBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const runBtn = document.getElementById('runBtn');
+        const runIcon = document.getElementById('runIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const resetBtn = document.getElementById('resetBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const codeInputArea = document.getElementById('code-input-area');
+        const codeInput = document.getElementById('codeInput');
+        const codeDisplay = document.getElementById('codeDisplay');
+        const variablesDisplay = document.getElementById('variablesDisplay');
+        const outputDisplay = document.getElementById('outputDisplay');
+        const stepCounter = document.getElementById('stepCounter');
+        const visualizationArea = document.getElementById('visualization-area');
+        const inputModal = document.getElementById('inputModal');
+        const inputPrompt = document.getElementById('inputPrompt');
+        const userInput = document.getElementById('userInput');
+        const submitInputBtn = document.getElementById('submitInputBtn');
+        const explainBtn = document.getElementById('explainBtn');
+        const optimizeBtn = document.getElementById('optimizeBtn');
+        const findBugsBtn = document.getElementById('findBugsBtn');
+        const convertBtn = document.getElementById('convertBtn');
+        const aiModal = document.getElementById('aiModal');
+        const aiModalTitle = document.getElementById('aiModalTitle');
+        const aiModalContent = document.getElementById('aiModalContent');
+        const closeAiModalBtn = document.getElementById('closeAiModalBtn');
+        const convertModal = document.getElementById('convertModal');
+        const targetLanguageSelect = document.getElementById('targetLanguage');
+        const submitConvertBtn = document.getElementById('submitConvertBtn');
+        const cancelConvertBtn = document.getElementById('cancelConvertBtn');
+        const executionSlider = document.getElementById('executionSlider');
+
+        // --- State ---
+        let lineActions = {};
+        let functionMap = {};
+        let executionHistory = [];
+        let historyIndex = -1;
+        let breakpoints = new Set();
+        let isRunning = false;
+        let runInterval = null;
+        let inputCallback = null;
+        
+        const sampleCode = {
+            python: `def get_name():
+    name = input("Enter your name: ")
+    return name
+
+def greet(name):
+    print(f"Hello, {name}!")
+    age = 25
+    print(f"You are {age} years old.")
+
+# Main execution starts here
+username = get_name()
+greet(username)
+print("Visualization complete.")`,
+            javascript: `function getName() {
+    let name = prompt("Enter your name:");
+    return name;
+}
+
+function greet(name) {
+    console.log("Hello, " + name + "!");
+    let age = 30;
+    console.log("You are " + age + " years old.");
+}
+
+// Main execution starts here
+const username = getName();
+greet(username);
+console.log("Visualization complete.");`,
+            c: `#include <stdio.h>
+#include <string.h>
+
+void greet(char name[]) {
+    printf("Hello, %s!\\n", name);
+    int age = 28;
+    printf("You are %d years old.\\n", age);
+}
+
+int main() {
+    char myName[50];
+    printf("Enter your name: ");
+    scanf("%s", myName);
+    getchar(); // Consume newline
+    greet(myName);
+    printf("Visualization complete.\\n");
+    return 0;
+}`,
+            cpp: `#include <iostream>
+#include <string>
+
+void greet(std::string name) {
+    std::cout << "Hello, " << name << "!" << std::endl;
+    int age = 22;
+    std::cout << "You are " << age << " years old." << std::endl;
+}
+
+int main() {
+    std::string myName;
+    std::cout << "Enter your name: ";
+    std::cin >> myName;
+    greet(myName);
+    std::cout << "Visualization complete." << std::endl;
+    return 0;
+}`,
+            java: `import java.util.Scanner;
+
+public class Main {
+    public static void greet(String name) {
+        System.out.println("Hello, " + name);
+        int age = 35;
+        System.out.println("You are " + age + " years old.");
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Enter your name:");
+        String myName = scanner.nextLine();
+        greet(myName);
+        System.out.println("Visualization complete.");
+    }
+}`
+        };
+
+        // --- Gemini API ---
+        async function callGemini(prompt) {
+            aiModal.classList.remove('hidden');
+            aiModalContent.innerHTML = '<div class="flex justify-center items-center h-48"><div class="spinner"></div></div>';
+            const apiKey = ""; // Provided by Canvas
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre class="bg-gray-800 text-white p-4 rounded-md my-4"><code>$2</code></pre>').replace(/`([^`]+)`/g, '<code class="bg-gray-200 text-red-600 px-1 rounded">$1</code>').replace(/\n/g, '<br>');
+                    aiModalContent.innerHTML = html;
+                } else { throw new Error("No content received from API."); }
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                aiModalContent.innerHTML = `<p class="text-red-500">Sorry, something went wrong. Please check the console for details.</p>`;
+            }
+        }
+
+        // --- Core Logic ---
+        function parseCode(code) {
+            const lines = code.split('\n');
+            const newFunctionMap = {};
+            const newLineActions = {};
+            const functionRegex = /(?:void|int|String|def|function|Book\*|User\*)\s+([a-zA-Z0-9_]+)\s*\(/;
+            const mainRegex = /\bmain\s*\(/;
+
+            let braceCount = 0;
+            let currentFunc = null;
+            let inFunction = false;
+
+            lines.forEach((line, index) => {
+                const lineNumber = index + 1;
+                const match = line.match(functionRegex) || line.match(mainRegex);
+                
+                if (match && !inFunction) {
+                    const funcName = line.match(mainRegex) ? 'main' : match[1];
+                    currentFunc = { name: funcName, start: lineNumber, bodyStart: -1 };
+                    braceCount = 0;
+                    inFunction = true;
+                }
+
+                if (inFunction) {
+                    if (line.includes('{')) {
+                        if(currentFunc.bodyStart === -1) currentFunc.bodyStart = lineNumber + 1;
+                        braceCount++;
+                    }
+                    if (line.includes('}')) {
+                        braceCount--;
+                    }
+                    if (braceCount === 0 && currentFunc.bodyStart !== -1) {
+                        currentFunc.end = lineNumber;
+                        newFunctionMap[currentFunc.name] = { ...currentFunc };
+                        currentFunc = null;
+                        inFunction = false;
+                    }
+                }
+            });
+
+            lines.forEach((line, index) => {
+                const lineNumber = index + 1;
+                const trimmedLine = line.trim();
+                if (trimmedLine === '' || trimmedLine.startsWith('#') || trimmedLine.startsWith('//') || trimmedLine.startsWith('import') || trimmedLine.startsWith('typedef')) {
+                    newLineActions[lineNumber] = { type: 'comment' };
+                    return;
+                }
+
+                let action = { type: 'expression', content: trimmedLine };
+                const functionCallMatch = trimmedLine.match(/([a-zA-Z0-9_]+)\s*\(/);
+
+                if (trimmedLine.match(/\b(print|console\.log|printf|cout)/i)) action = { type: 'output', content: trimmedLine };
+                else if (trimmedLine.match(/=\s*\b(input|prompt|readline)\b/i) || trimmedLine.match(/\b(scanf|fgets|cin)\b/)) {
+                    let varName = 'input';
+                    if(trimmedLine.includes('=')) varName = trimmedLine.split('=')[0].trim();
+                    else if (trimmedLine.match(/scanf\s*\(/i)) { try { varName = trimmedLine.match(/scanf\((.*)\)/)[1].split(',').pop().trim().replace('&', ''); } catch(e){} }
+                    else if (trimmedLine.match(/\b(cin)\s*>>/i)) { varName = trimmedLine.split('>>')[1].trim().replace(';','');}
+                    action = { type: 'input', variable: varName, content: trimmedLine };
+                }
+                else if (functionCallMatch && newFunctionMap[functionCallMatch[1]] && !trimmedLine.startsWith('typedef')) action = { type: 'call', funcName: functionCallMatch[1], content: trimmedLine };
+                else if (trimmedLine.includes('=')) { const parts = trimmedLine.split('='); if (parts.length > 1) { const varName = parts[0].trim().replace(/^(let|var|const|int|string|char|Book\*|User\*|StackNode\*|QueueNode\*)\s+/, '').replace(/\[.*\]/,''); action = { type: 'assignment', variable: varName, value: parts[1].trim(), content: trimmedLine }; } }
+                else if (trimmedLine.startsWith('return') || trimmedLine.startsWith('}')) action = { type: 'return', content: trimmedLine };
+                
+                newLineActions[lineNumber] = action;
+            });
+            
+            return { lineActions: newLineActions, functionMap: newFunctionMap };
+        }
+        
+        function showInputModal(variableName, callback) {
+            if(isRunning) toggleRun();
+            inputModal.classList.remove('hidden');
+            inputPrompt.textContent = `Program is waiting for input for variable: "${variableName}"`;
+            userInput.value = '';
+            userInput.focus();
+            inputCallback = callback;
+        }
+
+        function renderState() {
+            if (historyIndex < 0 || historyIndex >= executionHistory.length) return;
+            const state = executionHistory[historyIndex];
+            stepCounter.textContent = `Step ${historyIndex}`;
+            executionSlider.max = executionHistory.length > 0 ? executionHistory.length - 1 : 0;
+            executionSlider.value = historyIndex;
+
+            const lines = codeInput.value.split('\n');
+            const executedLines = new Set(executionHistory.slice(0, historyIndex).map(s => s.lineNumber));
+
+            codeDisplay.innerHTML = lines.map((line, index) => {
+                const lineNumber = index + 1;
+                let lineClasses = 'flex items-center transition-colors duration-200';
+                let gutterClasses = 'gutter-element pr-4 font-mono w-12';
+                let gutterContent = `${lineNumber}`;
+                let lineId = `line-${lineNumber}`;
+
+                if (breakpoints.has(lineNumber)) gutterClasses += ' breakpoint';
+                if (lineNumber === state.lineNumber) {
+                    lineClasses += ' highlight';
+                    gutterClasses += ' execution-arrow';
+                    gutterContent = `➜ ${lineNumber}`;
+                } else if (executedLines.has(lineNumber)) {
+                    lineClasses += ' executed';
+                }
+
+                return `<div id="${lineId}" class="${lineClasses}">
+                            <div class="${gutterClasses}" data-line="${lineNumber}">${gutterContent}</div>
+                            <div class="flex-1">${line || '&nbsp;'}</div>
+                        </div>`;
+            }).join('');
+            
+            const highlightedLine = document.getElementById(`line-${state.lineNumber}`);
+            if (highlightedLine) {
+                highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            const vars = state.variables;
+            if (Object.keys(vars).length === 0) {
+                variablesDisplay.innerHTML = `<p class="text-secondary">No variables yet.</p>`;
+            } else {
+                variablesDisplay.innerHTML = Object.entries(vars).map(([key, value]) =>
+                    `<div class="variable-box">
+                        <span class="font-semibold text-sm mr-4" style="color: var(--accent-color);">${key}</span>
+                        <span class="code-font text-sm text-right">${value}</span>
+                    </div>`
+                ).join('');
+            }
+            
+            const outputHTML = state.output.map(line => line.replace(/\n/g, '<br>')).join('');
+            outputDisplay.innerHTML = state.output.length === 0 ? `<p class="text-gray-400">No output yet.</p>` : outputHTML;
+
+            prevBtn.disabled = historyIndex <= 0;
+            const isAtEnd = historyIndex >= executionHistory.length - 1 && !lineActions[executionHistory[historyIndex]?.lineNumber + 1];
+            nextBtn.disabled = isRunning || isAtEnd;
+            runBtn.disabled = isRunning || isAtEnd;
+        }
+
+        function getNextLineNumber(currentLine, callStack) {
+            const action = lineActions[currentLine];
+            if (action) {
+                if (action.type === 'call' && functionMap[action.funcName]) {
+                    callStack.push({returnAddress: currentLine + 1, funcName: action.funcName});
+                    return functionMap[action.funcName].bodyStart;
+                }
+                if (action.type === 'return') {
+                    if (callStack.length > 0) {
+                        const lastCall = callStack[callStack.length - 1];
+                        if (currentLine >= functionMap[lastCall.funcName].end) {
+                            return callStack.pop().returnAddress;
+                        }
+                    }
+                }
+            }
+            
+            let nextLine = currentLine + 1;
+            while(lineActions[nextLine] && (lineActions[nextLine].type === 'comment' || (lineActions[nextLine].type === 'expression' && lineActions[nextLine].content.startsWith('}')))) {
+                 if(callStack.length > 0 && nextLine >= functionMap[callStack[callStack.length - 1].funcName].end) {
+                    return callStack.pop().returnAddress;
+                 }
+                nextLine++;
+            }
+            return nextLine;
+        }
+        
+        function handleNextStep(isAutoRun = false) {
+             if (historyIndex < executionHistory.length - 1 && !isAutoRun) {
+                historyIndex++;
+                renderState();
+                if (breakpoints.has(executionHistory[historyIndex].lineNumber)) {
+                    if(isRunning) toggleRun();
+                }
+                return;
+            }
+
+            const currentState = executionHistory[historyIndex];
+            if (!currentState) return;
+
+            let nextLineNumber = getNextLineNumber(currentState.lineNumber, currentState.callStack);
+            
+            if (!lineActions[nextLineNumber]) {
+                if(isRunning) toggleRun();
+                renderState();
+                return;
+            }
+
+            const action = lineActions[currentState.lineNumber];
+            const nextState = JSON.parse(JSON.stringify(currentState)); 
+            nextState.lineNumber = nextLineNumber;
+
+            if (action) {
+                switch(action.type) {
+                    case 'input':
+                        showInputModal(action.variable, (inputValue) => {
+                            const valueToStore = isNaN(inputValue) || inputValue.trim() === '' ? `"${inputValue}"` : inputValue;
+                            
+                            if (nextState.output.length > 0) {
+                                nextState.output[nextState.output.length - 1] += inputValue + '\n';
+                            } else {
+                                nextState.output.push(inputValue + '\n');
+                            }
+
+                            nextState.variables[action.variable] = valueToStore;
+                            executionHistory.push(nextState);
+                            historyIndex++;
+                            renderState();
+                        });
+                        return;
+                    case 'assignment':
+                        const value = action.value.trim().replace(';','');
+                        if (!isNaN(value)) {
+                           nextState.variables[action.variable] = value;
+                        } else if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                           nextState.variables[action.variable] = value;
+                        }
+                        else {
+                           nextState.variables[action.variable] = `(evaluating: ${action.value})`;
+                        }
+                        break;
+                    case 'output':
+                        let outputContent = '';
+                        const lang = languageSelect.value;
+                        const currentVars = currentState.variables;
+
+                        if (lang === 'c' || lang === 'java') {
+                            const match = action.content.match(/\((.*)\)/);
+                            if (match) {
+                                let parts = match[1].split(',').map(p => p.trim());
+                                let formatString = parts.shift().replace(/"/g, '');
+                                parts.forEach(varName => {
+                                    const cleanVarName = varName.replace('&', '');
+                                    if (currentVars[cleanVarName]) {
+                                        formatString = formatString.replace(/%[dsfi]/, currentVars[cleanVarName].replace(/"/g, ''));
+                                    }
+                                });
+                                outputContent = formatString.replace(/\\n/g, '\n');
+                            }
+                        } else if (lang === 'cpp') {
+                             outputContent = action.content.split('<<').slice(1).map(part => {
+                                 let cleanPart = part.trim().replace(';','').replace('endl','');
+                                 if (currentVars[cleanPart]) {
+                                     return currentVars[cleanPart].replace(/"/g, '');
+                                 }
+                                 return cleanPart.replace(/"/g, '');
+                             }).join('');
+                             if(action.content.includes('endl')) outputContent += '\n';
+                        } else if (lang === 'python') {
+                            const match = action.content.match(/\((.*)\)/);
+                            if (match) {
+                                outputContent = match[1];
+                                if (outputContent.startsWith('f"') || outputContent.startsWith("f'")) {
+                                    outputContent = outputContent.substring(2, outputContent.length - 1);
+                                    Object.entries(currentVars).forEach(([key, val]) => {
+                                        const regex = new RegExp(`\\{${key}\\}`, 'g');
+                                        outputContent = outputContent.replace(regex, val.replace(/"/g, ''));
+                                    });
+                                } else {
+                                     outputContent = outputContent.replace(/"/g, '').replace(/'/g, '');
+                                }
+                                outputContent += '\n';
+                            }
+                        } else if (lang === 'javascript') {
+                            const match = action.content.match(/\((.*)\)/);
+                            if (match) {
+                                outputContent = match[1].split('+').map(part => {
+                                    let cleanPart = part.trim();
+                                     if (currentVars[cleanPart]) {
+                                         return currentVars[cleanPart].replace(/"/g, '');
+                                     }
+                                     return cleanPart.replace(/"/g, '').replace(/'/g, '');
+                                }).join('') + '\n';
+                            }
+                        }
+
+                        if (outputContent) {
+                            nextState.output.push(outputContent);
+                        }
+                        break;
+                }
+            }
+
+            executionHistory.push(nextState);
+            historyIndex++;
+            renderState();
+
+            if (isAutoRun && breakpoints.has(nextState.lineNumber)) {
+                if(isRunning) toggleRun();
+            }
+        }
+
+        function handlePrevStep() { if (historyIndex <= 0) return; if(isRunning) toggleRun(); historyIndex--; renderState(); }
+        
+        function stopVisualization() {
+            if (isRunning) toggleRun();
+            visualizationArea.classList.add('hidden');
+            codeInputArea.classList.remove('hidden');
+            [prevBtn, nextBtn, runBtn, resetBtn, stopBtn, executionSlider].forEach(el => el.disabled = true);
+            executionHistory = [];
+            historyIndex = -1;
+        }
+
+        function resetVisualization() {
+            if(isRunning) toggleRun();
+            const lang = languageSelect.value;
+            const compiledLangs = ['c', 'cpp', 'java'];
+            let startLine = 1;
+
+            if (compiledLangs.includes(lang)) {
+                if (functionMap.main) {
+                    startLine = functionMap.main.bodyStart;
+                } else {
+                    alert('Error: Could not find a main() function to begin execution.');
+                    return;
+                }
+            }
+             while(lineActions[startLine] && lineActions[startLine].type === 'comment') {
+                startLine++;
+            }
+
+            executionHistory = [{
+                lineNumber: startLine,
+                variables: {},
+                output: [],
+                callStack: []
+            }];
+            historyIndex = 0;
+            renderState();
+        }
+        
+        function toggleRun() {
+            isRunning = !isRunning;
+            runIcon.classList.toggle('hidden', isRunning);
+            pauseIcon.classList.toggle('hidden', !isRunning);
+            if (isRunning) { 
+                runInterval = setInterval(() => {
+                    const currentState = executionHistory[historyIndex];
+                    if (!currentState || !lineActions[currentState.lineNumber + 1]) {
+                        toggleRun();
+                        return;
+                    }
+                    handleNextStep(true)
+                }, 800); 
+            } 
+            else { clearInterval(runInterval); }
+            renderState();
+        }
+
+        // --- Event Listeners ---
+        visualizeBtn.addEventListener('click', () => {
+            if (codeInput.value.trim() === '') return;
+            const parsed = parseCode(codeInput.value);
+            lineActions = parsed.lineActions;
+            functionMap = parsed.functionMap;
+            
+            resetVisualization();
+            visualizationArea.classList.remove('hidden');
+            
+            executionSlider.disabled = false;
+            [prevBtn, nextBtn, runBtn, resetBtn, stopBtn].forEach(btn => btn.disabled = false);
+        });
+
+        executionSlider.addEventListener('input', (e) => {
+            if(isRunning) toggleRun();
+            historyIndex = parseInt(e.target.value, 10);
+            if(historyIndex > executionHistory.length - 1) historyIndex = executionHistory.length - 1;
+            renderState();
+        });
+
+        function updateSampleCode() { 
+            codeInput.value = sampleCode[languageSelect.value] || ''; 
+            visualizationArea.classList.add('hidden'); 
+        }
+        
+        explainBtn.addEventListener('click', () => { if (codeInput.value.trim() === '') return; aiModalTitle.textContent = '✨ Code Explanation'; const prompt = `Explain the following ${languageSelect.value} code. Describe its purpose, how it works step-by-step, and what the expected output is. Format the explanation clearly using markdown.\n\nCode:\n\`\`\`${languageSelect.value}\n${codeInput.value}\n\`\`\``; callGemini(prompt); });
+        optimizeBtn.addEventListener('click', () => { if (codeInput.value.trim() === '') return; aiModalTitle.textContent = '✨ Optimization Suggestions'; const prompt = `Analyze the following ${languageSelect.value} code and suggest optimizations. Focus on improving performance, readability, and best practices. Provide code examples for your suggestions. Format the analysis using markdown.\n\nCode:\n\`\`\`${languageSelect.value}\n${codeInput.value}\n\`\`\``; callGemini(prompt); });
+        findBugsBtn.addEventListener('click', () => { if (codeInput.value.trim() === '') return; aiModalTitle.textContent = '✨ Bug Finder'; const prompt = `Act as an expert code reviewer. Analyze the following ${languageSelect.value} code for potential bugs, logical errors, or edge cases. Do not comment on style or optimization unless it directly relates to a bug. Provide a list of potential issues you find, explaining why each is a problem. If you find no bugs, state that the code appears to be robust. Format your response using markdown.\n\nCode:\n\`\`\`${languageSelect.value}\n${codeInput.value}\n\`\`\``; callGemini(prompt); });
+        
+        convertBtn.addEventListener('click', () => {
+            if (codeInput.value.trim() === '') return;
+            const currentLang = languageSelect.value;
+            targetLanguageSelect.innerHTML = '';
+            for (const lang in sampleCode) {
+                if (lang !== currentLang) {
+                    const option = document.createElement('option');
+                    option.value = lang;
+                    option.textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+                    targetLanguageSelect.appendChild(option);
+                }
+            }
+            convertModal.classList.remove('hidden');
+        });
+
+        cancelConvertBtn.addEventListener('click', () => convertModal.classList.add('hidden'));
+        submitConvertBtn.addEventListener('click', () => {
+            const targetLang = targetLanguageSelect.value;
+            convertModal.classList.add('hidden');
+            aiModalTitle.textContent = `✨ Convert to ${targetLang}`;
+            const prompt = `Translate the following ${languageSelect.value} code into ${targetLang}. Ensure the translated code is idiomatic and follows the best practices of the target language. Provide only the code block in your response, without any explanation before or after.\n\nCode:\n\`\`\`${languageSelect.value}\n${codeInput.value}\n\`\`\``;
+            callGemini(prompt);
+        });
+
+        codeDisplay.addEventListener('click', (e) => { const gutter = e.target.closest('.gutter-element'); if (gutter) { const line = parseInt(gutter.dataset.line, 10); if (breakpoints.has(line)) breakpoints.delete(line); else breakpoints.add(line); if(executionHistory.length > 0) renderState(); } });
+        closeAiModalBtn.addEventListener('click', () => aiModal.classList.add('hidden'));
+        nextBtn.addEventListener('click', () => handleNextStep(false));
+        prevBtn.addEventListener('click', handlePrevStep);
+        runBtn.addEventListener('click', toggleRun);
+        resetBtn.addEventListener('click', resetVisualization);
+        stopBtn.addEventListener('click', () => {
+            stopVisualization();
+        });
+        languageSelect.addEventListener('change', updateSampleCode);
+        submitInputBtn.addEventListener('click', () => { if (inputCallback) inputCallback(userInput.value); inputModal.classList.add('hidden'); inputCallback = null; });
+        userInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') submitInputBtn.click(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !visualizationArea.classList.contains('hidden')) {
+                stopBtn.click();
+            }
+        });
+
+        themeSwitcher.addEventListener('change', (e) => {
+            document.body.className = e.target.value;
+        });
+
+        // Set initial code
+        updateSampleCode();
+        languageSelect.value = 'c';
+        codeInput.value = `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_BOOKS 10
+#define MAX_USERS 10
+#define MAX_TITLE 100
+
+typedef struct {
+    int id;
+    char title[MAX_TITLE];
+    int is_issued;
+} Book;
+
+typedef struct {
+    char name[50];
+} User;
+
+Book library[MAX_BOOKS];
+int book_count = 0;
+
+Book* issued_books[MAX_BOOKS];
+int issued_count = 0;
+
+Book* return_queue[MAX_BOOKS];
+int queue_front = 0;
+int queue_rear = -1;
+int queue_count = 0;
+
+User users[MAX_USERS];
+int user_count = 0;
+
+void addBook(int id, char title[]) {
+    if (book_count < MAX_BOOKS) {
+        library[book_count].id = id;
+        strcpy(library[book_count].title, title);
+        library[book_count].is_issued = 0;
+        book_count++;
+        printf("Book added.\\n");
+    } else {
+        printf("Library is full.\\n");
+    }
+}
+
+Book* searchBook(int id) {
+    for (int i = 0; i < book_count; i++) {
+        if (library[i].id == id) {
+            return &library[i];
+        }
+    }
+    return NULL;
+}
+
+void displayAllBooks() {
+    printf("Books in Library:\\n");
+    for (int i = 0; i < book_count; i++) {
+        printf("ID: %d, Title: %s, Issued: %s\\n", library[i].id, library[i].title, library[i].is_issued ? "Yes" : "No");
+    }
+}
+
+void issueBook(int id) {
+    Book* book = searchBook(id);
+    if (book && !book->is_issued) {
+        book->is_issued = 1;
+        issued_books[issued_count++] = book;
+        printf("Book issued: %s\\n", book->title);
+    } else if (book && book->is_issued) {
+        printf("Book is already issued.\\n");
+    } else {
+        printf("Book not found.\\n");
+    }
+}
+
+void returnBook(int id) {
+     Book* book = searchBook(id);
+     if (book && book->is_issued) {
+        queue_rear = (queue_rear + 1) % MAX_BOOKS;
+        return_queue[queue_rear] = book;
+        queue_count++;
+        printf("Book returned to queue: %s\\n", book->title);
+     } else if (book && !book->is_issued) {
+        printf("Book was not issued.\\n");
+     } else {
+        printf("Book not found.\\n");
+     }
+}
+
+void processReturn() {
+    if (queue_count > 0) {
+        Book* book = return_queue[queue_front];
+        queue_front = (queue_front + 1) % MAX_BOOKS;
+        queue_count--;
+        book->is_issued = 0;
+        printf("Processed return for: %s\\n", book->title);
+    } else {
+        printf("Return queue is empty.\\n");
+    }
+}
+
+void viewIssuedBooks() {
+    printf("Issued Books:\\n");
+    for (int i = 0; i < issued_count; i++) {
+        printf("ID: %d, Title: %s\\n", issued_books[i]->id, issued_books[i]->title);
+    }
+}
+
+void addUser(char name[]) {
+    if (user_count < MAX_USERS) {
+        strcpy(users[user_count].name, name);
+        user_count++;
+        printf("User added.\\n");
+    } else {
+        printf("User limit reached.\\n");
+    }
+}
+
+void viewUsers() {
+    printf("Users:\\n");
+    for (int i = 0; i < user_count; i++) {
+        printf("Name: %s\\n", users[i].name);
+    }
+}
+
+int main() {
+    int choice = -1;
+    int id;
+    char title[MAX_TITLE];
+    char name[50];
+
+    while (choice != 0) {
+        printf("\\n--- Library Menu ---\\n");
+        printf("1. Add Book\\n");
+        printf("2. Display All Books\\n");
+        printf("3. Issue Book\\n");
+        printf("4. Return Book\\n");
+        printf("5. Process Return\\n");
+        printf("6. View Issued Books\\n");
+        printf("7. Add User\\n");
+        printf("8. View Users\\n");
+        printf("0. Exit\\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        getchar(); 
+
+        switch (choice) {
+            case 1:
+                printf("Enter book ID: ");
+                scanf("%d", &id);
+                getchar();
+                printf("Enter book title: ");
+                fgets(title, MAX_TITLE, stdin);
+                title[strcspn(title, "\\n")] = 0;
+                addBook(id, title);
+                break;
+            case 2:
+                displayAllBooks();
+                break;
+            case 3:
+                printf("Enter book ID to issue: ");
+                scanf("%d", &id);
+                getchar();
+                issueBook(id);
+                break;
+            case 4:
+                printf("Enter book ID to return: ");
+                scanf("%d", &id);
+                getchar();
+                returnBook(id);
+                break;
+            case 5:
+                processReturn();
+                break;
+            case 6:
+                viewIssuedBooks();
+                break;
+            case 7:
+                printf("Enter user name: ");
+                fgets(name, 50, stdin);
+                name[strcspn(name, "\\n")] = 0;
+                addUser(name);
+                break;
+            case 8:
+                viewUsers();
+                break;
+            case 0:
+                printf("Exiting...\\n");
+                break;
+            default:
+                printf("Invalid choice.\\n");
+        }
+    }
+    return 0;
+}`;
+    </script>
+</body>
+</html>
