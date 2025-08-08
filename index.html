@@ -324,7 +324,7 @@ public class Main {
         async function callGemini(prompt) {
             aiModal.classList.remove('hidden');
             aiModalContent.innerHTML = '<div class="flex justify-center items-center h-48"><div class="spinner"></div></div>';
-            const apiKey = ""; // Provided by Canvas
+            const apiKey = "AIzaSyA9NY4EgUvDr7BozRT5dzwV--qIJqi6f4w";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
             try {
@@ -694,8 +694,8 @@ public class Main {
             lineActions = parsed.lineActions;
             functionMap = parsed.functionMap;
             
-            resetVisualization();
             visualizationArea.classList.remove('hidden');
+            resetVisualization();
             
             executionSlider.disabled = false;
             [prevBtn, nextBtn, runBtn, resetBtn, stopBtn].forEach(btn => btn.disabled = false);
